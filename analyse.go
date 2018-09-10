@@ -62,7 +62,9 @@ func analyse() {
 					histo.Update(spentTime.Nanoseconds() / 1000)
 				} else {
 					s := metrics.NewExpDecaySample(1024, 0.015)
-					serverHisto[req.dstIP.String()] = metrics.NewHistogram(s)
+                    h := metrics.NewHistogram(s)
+                    h.Update(spentTime.Nanoseconds() / 1000)
+					serverHisto[req.dstIP.String()] = h
 				}
 			}
 		case <-ticker.C:
