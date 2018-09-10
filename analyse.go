@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/couchbase/gomemcached"
+    "github.com/rcrowley/go-metrics"
 	"net"
 	"sort"
 	"time"
@@ -35,6 +36,7 @@ func analyse() {
 	rawTicker := time.NewTicker(120 * time.Second)
 	rawData := make(map[uint32]MCReqAndTime)
 	serverData := make(map[string]uint32)
+	serverHisto := make(map[string]metrics.Histogram)
 	var allNumber int
 	var timeoutNumber int
 	for {
@@ -56,6 +58,12 @@ func analyse() {
 				}
 				delete(rawData, resp.response.Opaque)
 				Push(data, reqAndTime{req, spentTime})
+                if histo, ok := serverHisto[req.dstIP.String()]; ok {
+                    histo.Update(spentTime.Nanoseconds()/1000)
+                } else {
+                    s := metrics.NewExpDecaySample(1024, 0.015)
+                    serverHisto[req.dstIP.String()] = metrics.NewHistogram(s)
+                }
 			}
 		case <-ticker.C:
 			fmt.Printf("\n\n------------------top %v request with the longest response time-----------------------------------\n", options.topN)
@@ -67,10 +75,21 @@ func analyse() {
 				}
 			}
 			fmt.Printf("\n")
-			fmt.Printf("------------------%v timeout in %v, %.4f%% below %v ms-------------------------------\n", timeoutNumber, allNumber, float64(allNumber-timeoutNumber)/float64(allNumber)*100, options.timeout)
+			fmt.Printf("------------------%v timeout in %v, %.4f%% below %v ms-------------------------------\n\n", timeoutNumber, allNumber, float64(allNumber-timeoutNumber)/float64(allNumber)*100, options.timeout)
 			for i, x := range serverData {
 				fmt.Printf("%v timeout at server %s\n", x, i)
-				delete(serverData, i)
+                h := serverHisto[i]
+                ps := h.Percentiles([]float64{0.5, 0.75, 0.95, 0.99})
+                fmt.Printf("min = %.4f ms\n", float64(h.Min())/1000)
+                fmt.Printf("max = %.4f ms\n", float64(h.Max())/1000)
+                fmt.Printf("mean = %.4f ms\n", h.Mean()/1000)
+                fmt.Printf("%%50 <= %.4f ms\n", ps[0]/1000)
+                fmt.Printf("%%75 <= %.4f ms\n", ps[1]/1000)
+                fmt.Printf("%%95 <= %.4f ms\n", ps[2]/1000)
+                fmt.Printf("%%99 <= %v ms\n", ps[3]/1000)
+                fmt.Println()
+				/* delete(serverData, i) */
+                /* h.Clear() */
 			}
 			allNumber = 0
 			timeoutNumber = 0
