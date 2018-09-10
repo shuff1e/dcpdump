@@ -62,8 +62,9 @@ func analyse() {
 					histo.Update(spentTime.Nanoseconds() / 1000)
 				} else {
 					s := metrics.NewExpDecaySample(1024, 0.015)
-                    h := metrics.NewHistogram(s)
-                    h.Update(spentTime.Nanoseconds() / 1000)
+					/* s := metrics.NewUniformSample(1028) */
+					h := metrics.NewHistogram(s)
+					h.Update(spentTime.Nanoseconds() / 1000)
 					serverHisto[req.dstIP.String()] = h
 				}
 			}
@@ -77,10 +78,14 @@ func analyse() {
 				}
 			}
 			fmt.Printf("\n")
-			fmt.Printf("------------------%v timeout in %v, %.4f%% below %v ms-------------------------------\n\n", timeoutNumber, allNumber, float64(allNumber-timeoutNumber)/float64(allNumber)*100, options.timeout)
+			fmt.Printf("------------------%v timeout in %v, %.4f%% below %v ms-------------------------------\n", timeoutNumber, allNumber, float64(allNumber-timeoutNumber)/float64(allNumber)*100, options.timeout)
 			for i, x := range serverData {
 				fmt.Printf("%v timeout at server %s\n", x, i)
-				h := serverHisto[i]
+				delete(serverData, i)
+			}
+			fmt.Println()
+			for i, h := range serverHisto {
+				fmt.Printf("metrics of server %s\n", i)
 				ps := h.Percentiles([]float64{0.5, 0.75, 0.95, 0.99})
 				fmt.Printf("min = %.4f ms\n", float64(h.Min())/1000)
 				fmt.Printf("max = %.4f ms\n", float64(h.Max())/1000)
@@ -90,7 +95,6 @@ func analyse() {
 				fmt.Printf("%%95 <= %.4f ms\n", ps[2]/1000)
 				fmt.Printf("%%99 <= %v ms\n", ps[3]/1000)
 				fmt.Println()
-				/* delete(serverData, i) */
 				/* h.Clear() */
 			}
 			allNumber = 0
