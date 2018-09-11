@@ -23,3 +23,7 @@ func Push(h opeHeap, value reqAndTime) {
 	}
 	heap.Fix(h, 0)
 }
+
+func Heapify(h opeHeap) {
+    heap.Init(h)
+}
