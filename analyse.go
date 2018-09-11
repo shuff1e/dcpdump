@@ -19,6 +19,8 @@ type MCReqAndTime struct {
 type MCRespAndTime struct {
 	response gomemcached.MCResponse
 	respTime time.Time
+	srcIP   net.IP
+	dstIP   net.IP
 }
 
 type reqAndTime struct {
@@ -31,65 +33,65 @@ var (
 	initialTime time.Time
 )
 
+type counterAndHisto struct {
+    all metrics.Counter
+    timeout metrics.Counter
+    histo metrics.Histogram
+}
 func analyse() {
-	ticker := time.NewTicker(time.Duration(options.analysisInterval) * time.Second)
+	ticker := time.NewTicker(time.Duration(options.printInterval) * time.Second)
+    serverMetrics := make(map[string]counterAndHisto)
 	rawTicker := time.NewTicker(120 * time.Second)
-	rawData := make(map[uint32]MCReqAndTime)
-	serverData := make(map[string]uint32)
-	serverHisto := make(map[string]metrics.Histogram)
-	var allNumber int
-	var timeoutNumber int
+	rawData := make(map[string]MCReqAndTime)
 	for {
 		select {
 		case req := <-reqChan:
-			if _, ok := rawData[req.request.Opaque]; !ok {
-				rawData[req.request.Opaque] = req
+			if _, ok := rawData[req.srcIP.String() + req.dstIP.String() + fmt.Sprintf("%d",req.request.Opaque)]; !ok {
+				rawData[req.srcIP.String() + req.dstIP.String() + fmt.Sprintf("%d",req.request.Opaque)] = req
 			}
 		case resp := <-respChan:
-			if req, ok := rawData[resp.response.Opaque]; ok {
+			if req, ok := rawData[resp.dstIP.String() + resp.srcIP.String() + fmt.Sprintf("%d",resp.response.Opaque)]; ok {
 				if options.printAll {
-					fmt.Printf("Operation %s, key %s, sent from %15s to %15s at %s, received at %s\n", req.request.Opcode, string(req.request.Key), req.srcIP, req.dstIP, req.reqTime, resp.respTime)
+					fmt.Printf("%s, key %s, sent from %15s to %15s at %s, received at %s\n", req.request.Opcode, string(req.request.Key), req.srcIP, req.dstIP, req.reqTime, resp.respTime)
 				}
-				allNumber++
 				spentTime := resp.respTime.Sub(req.reqTime)
-				if spentTime > time.Duration(time.Duration(options.timeout)*time.Millisecond) {
-					timeoutNumber++
-					serverData[req.dstIP.String()]++
-				}
-				delete(rawData, resp.response.Opaque)
-				Push(data, reqAndTime{req, spentTime})
-				if histo, ok := serverHisto[req.dstIP.String()]; ok {
-					histo.Update(spentTime.Nanoseconds() / 1000)
+				if ch, ok := serverMetrics[req.dstIP.String()]; ok {
+                    ch.all.Inc(1)
+					ch.histo.Update(spentTime.Nanoseconds() / 1000)
 				} else {
+                    c1 := metrics.NewCounter()
+                    c2 := metrics.NewCounter()
+                    c1.Inc(1)
 					s := metrics.NewExpDecaySample(1024, 0.015)
 					/* s := metrics.NewUniformSample(1028) */
 					h := metrics.NewHistogram(s)
 					h.Update(spentTime.Nanoseconds() / 1000)
-					serverHisto[req.dstIP.String()] = h
+					serverMetrics[req.dstIP.String()] = counterAndHisto{c1,c2,h}
 				}
+				if spentTime > time.Duration(time.Duration(options.timeout)*time.Millisecond) {
+					serverMetrics[req.dstIP.String()].timeout.Inc(1)
+				}
+				delete(rawData, req.srcIP.String() + req.dstIP.String() + fmt.Sprintf("%d",req.request.Opaque))
+				Push(data, reqAndTime{req, spentTime})
 			}
 		case <-ticker.C:
 			fmt.Printf("\n\n------------------top %v request with the longest response time-----------------------------------\n", options.topN)
 			sort.Sort(data)
-			for i, x := range data {
+			for _, x := range data {
 				if x.reqTime != initialTime {
-					fmt.Printf("Operation %s, key %s, sent from %15s to %15s at %s, spent %s\n", x.request.Opcode, string(x.request.Key), x.srcIP, x.dstIP, x.reqTime, x.spentTime)
-					data[i] = reqAndTime{}
+					fmt.Printf("%s, key %s, sent from %15s to %15s at %s, spent %s\n", x.request.Opcode, string(x.request.Key), x.srcIP, x.dstIP, x.reqTime, x.spentTime)
+					/* data[i] = reqAndTime{} */
 				}
 			}
+            Heapify(data)
 			fmt.Printf("\n")
-			fmt.Printf("------------------%v timeout in %v, %.4f%% below %v ms-------------------------------\n", timeoutNumber, allNumber, float64(allNumber-timeoutNumber)/float64(allNumber)*100, options.timeout)
-			for i, x := range serverData {
-				fmt.Printf("%v timeout at server %s\n", x, i)
-				delete(serverData, i)
-			}
-			fmt.Println()
-			for i, h := range serverHisto {
+			for i, x := range serverMetrics {
 				fmt.Printf("metrics of server %s\n", i)
-				ps := h.Percentiles([]float64{0.5, 0.75, 0.95, 0.99})
-				fmt.Printf("min = %.4f ms\n", float64(h.Min())/1000)
-				fmt.Printf("max = %.4f ms\n", float64(h.Max())/1000)
-				fmt.Printf("mean = %.4f ms\n", h.Mean()/1000)
+				fmt.Printf("%v timeout in %v\n", x.timeout.Count(), x.all.Count())
+				ps := x.histo.Percentiles([]float64{0.5, 0.75, 0.95, 0.99})
+				fmt.Printf("min = %.4f ms\n", float64(x.histo.Min())/1000)
+				fmt.Printf("max = %.4f ms\n", float64(x.histo.Max())/1000)
+				fmt.Printf("mean = %.4f ms\n", x.histo.Mean()/1000)
 				fmt.Printf("%%50 <= %.4f ms\n", ps[0]/1000)
 				fmt.Printf("%%75 <= %.4f ms\n", ps[1]/1000)
 				fmt.Printf("%%95 <= %.4f ms\n", ps[2]/1000)
@@ -97,8 +99,6 @@ func analyse() {
 				fmt.Println()
 				/* h.Clear() */
 			}
-			allNumber = 0
-			timeoutNumber = 0
 		case <-rawTicker.C:
 			for k, v := range rawData {
 				if time.Since(v.reqTime) > time.Duration(60*time.Second) {
