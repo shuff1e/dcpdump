@@ -14,13 +14,13 @@ import (
 )
 
 var options struct {
-	serverIP         string
-	network          string
-	snapshotLen      int
+	serverIP      string
+	network       string
+	snapshotLen   int
 	printInterval int
-	topN             int
-	printAll         bool
-	timeout          int
+	topN          int
+	printAll      bool
+	timeout       int
 }
 
 func argParse() {
@@ -115,17 +115,17 @@ func dispatch(packet gopacket.Packet) {
 				_, err := rv.Receive(r, nil)
 				if err != nil {
 					fmt.Println("Error decoding some part of the packet:", err)
-                } else {
-                    reqChan <- MCReqAndTime{rv, packet.Metadata().CaptureInfo.Timestamp, ip.SrcIP, ip.DstIP}
-                }
+				} else {
+					reqChan <- MCReqAndTime{rv, packet.Metadata().CaptureInfo.Timestamp, ip.SrcIP, ip.DstIP}
+				}
 			case 129:
 				rv := gomemcached.MCResponse{}
 				_, err := rv.Receive(r, nil)
 				if err != nil {
 					fmt.Println("Error decoding some part of the packet:", err)
-                } else {
-                    respChan <- MCRespAndTime{rv, packet.Metadata().CaptureInfo.Timestamp, ip.SrcIP, ip.DstIP}
-                }
+				} else {
+					respChan <- MCRespAndTime{rv, packet.Metadata().CaptureInfo.Timestamp, ip.SrcIP, ip.DstIP}
+				}
 			default:
 				/* fmt.Printf("%s\n", payload) */
 			}
