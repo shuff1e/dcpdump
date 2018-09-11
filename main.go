@@ -17,7 +17,7 @@ var options struct {
 	serverIP         string
 	network          string
 	snapshotLen      int
-	analysisInterval int
+	printInterval int
 	topN             int
 	printAll         bool
 	timeout          int
@@ -30,10 +30,10 @@ func argParse() {
 		"network used")
 	flag.IntVar(&options.snapshotLen, "snapshotLen", 1024,
 		"package will be cut if more than snapshotLen")
-	flag.IntVar(&options.analysisInterval, "analysisInterval", 120,
-		"the interval to pop the analysis info")
+	flag.IntVar(&options.printInterval, "printInterval", 120,
+		"the interval to pop the metrics")
 	flag.IntVar(&options.topN, "topN", 10,
-		"how many most time spent operation info to show")
+		"top n most time spent operation info to show")
 	flag.BoolVar(&options.printAll, "printAll", true,
 		"whether to print all the info")
 	flag.IntVar(&options.timeout, "timeout", 10,
@@ -114,16 +114,18 @@ func dispatch(packet gopacket.Packet) {
 				rv := gomemcached.MCRequest{}
 				_, err := rv.Receive(r, nil)
 				if err != nil {
-					/* fmt.Println("Error decoding some part of the packet:", err) */
-				}
-				reqChan <- MCReqAndTime{rv, packet.Metadata().CaptureInfo.Timestamp, ip.SrcIP, ip.DstIP}
+					fmt.Println("Error decoding some part of the packet:", err)
+                } else {
+                    reqChan <- MCReqAndTime{rv, packet.Metadata().CaptureInfo.Timestamp, ip.SrcIP, ip.DstIP}
+                }
 			case 129:
 				rv := gomemcached.MCResponse{}
 				_, err := rv.Receive(r, nil)
 				if err != nil {
-					/* fmt.Println("Error decoding some part of the packet:", err) */
-				}
-				respChan <- MCRespAndTime{rv, packet.Metadata().CaptureInfo.Timestamp}
+					fmt.Println("Error decoding some part of the packet:", err)
+                } else {
+                    respChan <- MCRespAndTime{rv, packet.Metadata().CaptureInfo.Timestamp, ip.SrcIP, ip.DstIP}
+                }
 			default:
 				/* fmt.Printf("%s\n", payload) */
 			}
