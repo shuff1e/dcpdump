@@ -25,5 +25,5 @@ func Push(h opeHeap, value reqAndTime) {
 }
 
 func Heapify(h opeHeap) {
-    heap.Init(h)
+	heap.Init(h)
 }
