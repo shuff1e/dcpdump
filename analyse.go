@@ -19,8 +19,8 @@ type MCReqAndTime struct {
 type MCRespAndTime struct {
 	response gomemcached.MCResponse
 	respTime time.Time
-	srcIP   net.IP
-	dstIP   net.IP
+	srcIP    net.IP
+	dstIP    net.IP
 }
 
 type reqAndTime struct {
@@ -34,44 +34,45 @@ var (
 )
 
 type counterAndHisto struct {
-    all metrics.Counter
-    timeout metrics.Counter
-    histo metrics.Histogram
+	all     metrics.Counter
+	timeout metrics.Counter
+	histo   metrics.Histogram
 }
+
 func analyse() {
 	ticker := time.NewTicker(time.Duration(options.printInterval) * time.Second)
-    serverMetrics := make(map[string]counterAndHisto)
+	serverMetrics := make(map[string]counterAndHisto)
 	rawTicker := time.NewTicker(120 * time.Second)
 	rawData := make(map[string]MCReqAndTime)
 	for {
 		select {
 		case req := <-reqChan:
-			if _, ok := rawData[req.srcIP.String() + req.dstIP.String() + fmt.Sprintf("%d",req.request.Opaque)]; !ok {
-				rawData[req.srcIP.String() + req.dstIP.String() + fmt.Sprintf("%d",req.request.Opaque)] = req
+			if _, ok := rawData[req.srcIP.String()+req.dstIP.String()+fmt.Sprintf("%d", req.request.Opaque)]; !ok {
+				rawData[req.srcIP.String()+req.dstIP.String()+fmt.Sprintf("%d", req.request.Opaque)] = req
 			}
 		case resp := <-respChan:
-			if req, ok := rawData[resp.dstIP.String() + resp.srcIP.String() + fmt.Sprintf("%d",resp.response.Opaque)]; ok {
+			if req, ok := rawData[resp.dstIP.String()+resp.srcIP.String()+fmt.Sprintf("%d", resp.response.Opaque)]; ok {
 				if options.printAll {
 					fmt.Printf("%s, key %s, sent from %15s to %15s at %s, received at %s\n", req.request.Opcode, string(req.request.Key), req.srcIP, req.dstIP, req.reqTime, resp.respTime)
 				}
 				spentTime := resp.respTime.Sub(req.reqTime)
 				if ch, ok := serverMetrics[req.dstIP.String()]; ok {
-                    ch.all.Inc(1)
+					ch.all.Inc(1)
 					ch.histo.Update(spentTime.Nanoseconds() / 1000)
 				} else {
-                    c1 := metrics.NewCounter()
-                    c2 := metrics.NewCounter()
-                    c1.Inc(1)
+					c1 := metrics.NewCounter()
+					c2 := metrics.NewCounter()
+					c1.Inc(1)
 					s := metrics.NewExpDecaySample(1024, 0.015)
 					/* s := metrics.NewUniformSample(1028) */
 					h := metrics.NewHistogram(s)
 					h.Update(spentTime.Nanoseconds() / 1000)
-					serverMetrics[req.dstIP.String()] = counterAndHisto{c1,c2,h}
+					serverMetrics[req.dstIP.String()] = counterAndHisto{c1, c2, h}
 				}
 				if spentTime > time.Duration(time.Duration(options.timeout)*time.Millisecond) {
 					serverMetrics[req.dstIP.String()].timeout.Inc(1)
 				}
-				delete(rawData, req.srcIP.String() + req.dstIP.String() + fmt.Sprintf("%d",req.request.Opaque))
+				delete(rawData, req.srcIP.String()+req.dstIP.String()+fmt.Sprintf("%d", req.request.Opaque))
 				Push(data, reqAndTime{req, spentTime})
 			}
 		case <-ticker.C:
@@ -83,7 +84,7 @@ func analyse() {
 					/* data[i] = reqAndTime{} */
 				}
 			}
-            Heapify(data)
+			Heapify(data)
 			fmt.Printf("\n")
 			for i, x := range serverMetrics {
 				fmt.Printf("metrics of server %s\n", i)
