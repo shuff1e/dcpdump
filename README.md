@@ -7,8 +7,8 @@ Build
 
 Capture all dcp packet
 
-  **./dcpdump -network=eth0 -snapshotLen=1024 -analysisInterval=120 -topN=10 -printAll=false -timeout=10**
+  **./dcpdump -network=eth0 -snapshotLen=1024 -printInterval=120 -topN=10 -printAll=false -timeout=10**
   
 Cpature dcp packet from or to one specific host
 
-  **./dcpdump -network=eth0 -snapshotLen=1024 -analysisInterval=120 -topN=10 -printAll=false -timeout=10 -server=127.0.0.1**
+  **./dcpdump -network=eth0 -snapshotLen=1024 -printInterval=120 -topN=10 -printAll=false -timeout=10 -server=127.0.0.1**
