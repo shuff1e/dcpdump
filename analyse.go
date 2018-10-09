@@ -94,10 +94,10 @@ func analyse() {
                 ch.histo.Update(spentTime.Nanoseconds() / 1000)
 				if spentTime > time.Duration(time.Duration(options.timeout)*time.Millisecond) {
 					ch.timeout.Inc(1)
+					Printf("%s, key %s, spent %s\n", time.Now(), string(req.request.Key), spentTime)
 				}
 				delete(rawData, req.Key())
 				Push(data, reqAndTime{req, spentTime})
-				Printf("%s, spent %s\n", time.Now(), spentTime)
 			}
 		case <-ticker.C:
 			Printf("\n\n------------------top %v request with the longest response time-----------------------------------\n", options.topN)
