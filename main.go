@@ -20,7 +20,6 @@ var options struct {
 	snapshotLen   int
 	printInterval int
 	topN          int
-	printAll      bool
 	timeout       int
     mode          string
 }
@@ -36,8 +35,6 @@ func argParse() {
 		"the interval to pop the metrics")
 	flag.IntVar(&options.topN, "topN", 10,
 		"top n most time spent operation info to show")
-	flag.BoolVar(&options.printAll, "printAll", true,
-		"whether to print all the info")
 	flag.IntVar(&options.timeout, "timeout", 10,
 		"timeout setting, in milliseconds")
     flag.StringVar(&options.mode, "mode", "client",
@@ -64,7 +61,7 @@ var (
 
 func init() {
 	argParse()
-	data = make(opeHeap, options.topN)
+	/* data = make(opeHeap, options.topN) */
 }
 
 func Println(a ...interface{}) {
