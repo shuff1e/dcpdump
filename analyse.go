@@ -5,7 +5,7 @@ import (
 	"github.com/couchbase/gomemcached"
 	"github.com/rcrowley/go-metrics"
 	"net"
-	"sort"
+	/* "sort" */
 	"time"
     "strconv"
 )
@@ -50,7 +50,7 @@ type reqAndTime struct {
 }
 
 var (
-	data        opeHeap
+	/* data        opeHeap */
 	initialTime time.Time
 )
 
@@ -82,9 +82,6 @@ func analyse() {
 			}
 		case resp := <-respChan:
 			if req, ok := rawData[resp.Key()]; ok {
-				if options.printAll {
-					Printf("%s, key %s, sent from %21s to %21s at %s, received at %s\n", req.request.Opcode, string(req.request.Key), req.srcIP.String() + ":" +req.srcPort.String(), req.dstIP.String() + ":" + req.dstPort.String(), req.reqTime, resp.respTime)
-				}
 				spentTime := resp.respTime.Sub(req.reqTime)
 				if _, ok := serverMetrics[req.modeServer(options.mode)]; !ok {
 					serverMetrics[req.modeServer(options.mode)] = initMetrics()
@@ -94,21 +91,21 @@ func analyse() {
                 ch.histo.Update(spentTime.Nanoseconds() / 1000)
 				if spentTime > time.Duration(time.Duration(options.timeout)*time.Millisecond) {
 					ch.timeout.Inc(1)
-					Printf("%s, key %s, spent %s\n", time.Now(), string(req.request.Key), spentTime)
+                    Printf("%s, key %s, spent %s\n", time.Now(), string(req.request.Key), spentTime)
 				}
 				delete(rawData, req.Key())
-				Push(data, reqAndTime{req, spentTime})
+				/* Push(data, reqAndTime{req, spentTime}) */
 			}
 		case <-ticker.C:
-			Printf("\n\n------------------top %v request with the longest response time-----------------------------------\n", options.topN)
-			sort.Sort(data)
-			for _, x := range data {
-				if x.reqTime != initialTime {
-					Printf("%s, key %s, sent from %21s to %21s at %s, spent %s\n", x.request.Opcode, string(x.request.Key), x.srcIP.String() + ":" +x.srcPort.String(), x.dstIP.String() + ":" + x.dstPort.String(), x.reqTime, x.spentTime)
-					/* data[i] = reqAndTime{} */
-				}
-			}
-			Heapify(data)
+			/* Printf("\n\n------------------top %v request with the longest response time-----------------------------------\n", options.topN) */
+			/* sort.Sort(data) */
+			/* for _, x := range data { */
+			/* 	if x.reqTime != initialTime { */
+			/* 		Printf("%s, key %s, sent from %21s to %21s at %s, spent %s\n", x.request.Opcode, string(x.request.Key), x.srcIP.String() + ":" +x.srcPort.String(), x.dstIP.String() + ":" + x.dstPort.String(), x.reqTime, x.spentTime) */
+			/* 		/1* data[i] = reqAndTime{} *1/ */
+			/* 	} */
+			/* } */
+			/* Heapify(data) */
 			Printf("\n")
 			for i, x := range serverMetrics {
 				Printf("metrics of server %s\n", i)
