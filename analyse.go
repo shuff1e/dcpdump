@@ -97,6 +97,7 @@ func analyse() {
 				}
 				delete(rawData, req.Key())
 				Push(data, reqAndTime{req, spentTime})
+				Printf("%s, spent %s\n", time.Now(), spentTime)
 			}
 		case <-ticker.C:
 			Printf("\n\n------------------top %v request with the longest response time-----------------------------------\n", options.topN)
