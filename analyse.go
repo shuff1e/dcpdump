@@ -91,12 +91,15 @@ func analyse() {
                 ch.histo.Update(spentTime.Nanoseconds() / 1000)
 				if spentTime > time.Duration(time.Duration(options.timeout)*time.Millisecond) {
 					ch.timeout.Inc(1)
-                    Printf("%s, key %s, spent %s\n", time.Now(), string(req.request.Key), spentTime)
-				}
+                    if options.printAll {
+                        Printf("%s, %s, %21s => %21s ,resp received at %s, spent %s\n", req.request.Opcode, string(req.request.Key), req.srcIP.String() + ":" +req.srcPort.String(), req.dstIP.String() + ":" + req.dstPort.String(), resp.respTime, spentTime)
+                    }
+                }
 				delete(rawData, req.Key())
 				/* Push(data, reqAndTime{req, spentTime}) */
 			}
 		case <-ticker.C:
+			Printf("\n\n--------------------------------------\n")
 			/* Printf("\n\n------------------top %v request with the longest response time-----------------------------------\n", options.topN) */
 			/* sort.Sort(data) */
 			/* for _, x := range data { */
@@ -121,6 +124,7 @@ func analyse() {
 				Println()
 				/* h.Clear() */
 			}
+			Printf("--------------------------------------\n\n")
 		case <-rawTicker.C:
 			for k, v := range rawData {
 				if time.Since(v.reqTime) > time.Duration(60*time.Second) {
