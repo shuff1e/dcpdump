@@ -7,8 +7,23 @@ Build
 
 Capture all dcp packet
 
-  **./dcpdump -network=eth0 -snapshotLen=1024 -printInterval=120 -topN=10 -printAll=false -timeout=10**
+  **./dcpdump -network=bond0.107 -snapshotLen=1024 -printAll=true -printInterval=100 -timeout=0 -mode=client**
   
 Cpature dcp packet from or to one specific host
 
-  **./dcpdump -network=eth0 -snapshotLen=1024 -printInterval=120 -topN=10 -printAll=false -timeout=10 -server=127.0.0.1**
+  **./dcpdump -network=bond0.107 -snapshotLen=1024 -printAll=true -printInterval=100 -timeout=0 -mode=server --server=127.0.0.1**
+  
+  # dcpdump
+dcpdump 用于从网卡层面分析couchbase的dcp协议中的请求和响应的信息, 即抓包和解析数据包的内容。
+
+Build
+
+  **go build**
+
+Capture all dcp packet
+
+  **./dcpdump -network=bond0.107 -snapshotLen=1024 -printAll=true -printInterval=100 -timeout=0 -mode=client**
+  
+Cpature dcp packet from or to one specific host
+
+  **./dcpdump -network=bond0.107 -snapshotLen=1024 -printAll=true -printInterval=100 -timeout=0 -mode=server --server=127.0.0.1**
