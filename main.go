@@ -9,9 +9,9 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 	"log"
+	"net/http"
 	"os"
 	"time"
-    "net/http"
 )
 
 var options struct {
@@ -22,7 +22,7 @@ var options struct {
 	topN          int
 	printAll      bool
 	timeout       int
-    mode          string
+	mode          string
 }
 
 func argParse() {
@@ -40,8 +40,8 @@ func argParse() {
 		"whether to print all the info")
 	flag.IntVar(&options.timeout, "timeout", 10,
 		"timeout setting, in milliseconds")
-    flag.StringVar(&options.mode, "mode", "client",
-        "run at server or client")
+	flag.StringVar(&options.mode, "mode", "client",
+		"run at server or client")
 	flag.Usage = usage
 	flag.Parse()
 }
@@ -58,8 +58,8 @@ var (
 	handle      *pcap.Handle
 	reqChan     = make(chan MCReqAndTime)
 	respChan    = make(chan MCRespAndTime)
-    httpChan    = make(chan string, 10)
-    writer      http.ResponseWriter
+	httpChan    = make(chan string, 10)
+	writer      http.ResponseWriter
 )
 
 func init() {
@@ -68,19 +68,19 @@ func init() {
 }
 
 func Println(a ...interface{}) {
-    fmt.Println(a...)
-        /* select { */
-        /* case httpChan <- fmt.Sprintln(a...): */
-        /* default: */
-        /* } */
+	fmt.Println(a...)
+	/* select { */
+	/* case httpChan <- fmt.Sprintln(a...): */
+	/* default: */
+	/* } */
 }
 
 func Printf(format string, a ...interface{}) {
-    fmt.Printf(format, a...)
-        /* select { */
-        /* case httpChan <- fmt.Sprintf(format, a...): */
-        /* default: */
-        /* } */
+	fmt.Printf(format, a...)
+	/* select { */
+	/* case httpChan <- fmt.Sprintf(format, a...): */
+	/* default: */
+	/* } */
 }
 
 func main() {
@@ -104,7 +104,7 @@ func main() {
 	}
 
 	go analyse()
-    /* go httpPrint() */
+	/* go httpPrint() */
 
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 	for packet := range packetSource.Packets() {
@@ -125,44 +125,44 @@ func dispatch(packet gopacket.Packet) {
 		// TOS, Length, Id, Flags, FragOffset, TTL, Protocol (TCP?),
 		// Checksum, SrcIP, DstIP
 
-        // Let's see if the packet is TCP
-        tcpLayer := packet.Layer(layers.LayerTypeTCP)
-        if tcpLayer != nil {
-            tcp, _ := tcpLayer.(*layers.TCP)
+		// Let's see if the packet is TCP
+		tcpLayer := packet.Layer(layers.LayerTypeTCP)
+		if tcpLayer != nil {
+			tcp, _ := tcpLayer.(*layers.TCP)
 
-            // TCP layer variables:
-            // SrcPort, DstPort, Seq, Ack, DataOffset, Window, Checksum, Urgent
-            // Bool flags: FIN, SYN, RST, PSH, ACK, URG, ECE, CWR, NS
+			// TCP layer variables:
+			// SrcPort, DstPort, Seq, Ack, DataOffset, Window, Checksum, Urgent
+			// Bool flags: FIN, SYN, RST, PSH, ACK, URG, ECE, CWR, NS
 
-            // When iterating through packet.Layers() above,
-            // if it lists Payload layer then that is the same as
-            // this applicationLayer. applicationLayer contains the payload
-            applicationLayer := packet.ApplicationLayer()
-            if applicationLayer != nil {
-                payload := applicationLayer.Payload()
-                r := bytes.NewReader(payload)
-                switch payload[0] {
-                case 128:
-                    rv := gomemcached.MCRequest{}
-                    _, err := rv.Receive(r, nil)
-                    if err != nil {
-                        Println("Error decoding some part of the packet:", err)
-                    } else {
-                        reqChan <- MCReqAndTime{rv, packet.Metadata().CaptureInfo.Timestamp, ip.SrcIP, tcp.SrcPort, ip.DstIP, tcp.DstPort}
-                    }
-                case 129:
-                    rv := gomemcached.MCResponse{}
-                    _, err := rv.Receive(r, nil)
-                    if err != nil {
-                        Println("Error decoding some part of the packet:", err)
-                    } else {
-                        respChan <- MCRespAndTime{rv, packet.Metadata().CaptureInfo.Timestamp, ip.SrcIP, tcp.SrcPort, ip.DstIP, tcp.DstPort}
-                    }
-                default:
-                    /* fmt.Printf("%s\n", payload) */
-                }
-            }
-        }
+			// When iterating through packet.Layers() above,
+			// if it lists Payload layer then that is the same as
+			// this applicationLayer. applicationLayer contains the payload
+			applicationLayer := packet.ApplicationLayer()
+			if applicationLayer != nil {
+				payload := applicationLayer.Payload()
+				r := bytes.NewReader(payload)
+				switch payload[0] {
+				case 128:
+					rv := gomemcached.MCRequest{}
+					_, err := rv.Receive(r, nil)
+					if err != nil {
+						Println("Error decoding some part of the packet:", err)
+					} else {
+						reqChan <- MCReqAndTime{rv, packet.Metadata().CaptureInfo.Timestamp, ip.SrcIP, tcp.SrcPort, ip.DstIP, tcp.DstPort}
+					}
+				case 129:
+					rv := gomemcached.MCResponse{}
+					_, err := rv.Receive(r, nil)
+					if err != nil {
+						Println("Error decoding some part of the packet:", err)
+					} else {
+						respChan <- MCRespAndTime{rv, packet.Metadata().CaptureInfo.Timestamp, ip.SrcIP, tcp.SrcPort, ip.DstIP, tcp.DstPort}
+					}
+				default:
+					/* fmt.Printf("%s\n", payload) */
+				}
+			}
+		}
 	}
 
 }
