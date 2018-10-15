@@ -1,47 +1,47 @@
 package main
 
 import (
-	"github.com/google/gopacket/layers"
 	"github.com/couchbase/gomemcached"
+	"github.com/google/gopacket/layers"
 	"github.com/rcrowley/go-metrics"
 	"net"
 	/* "sort" */
+	"strconv"
 	"time"
-    "strconv"
 )
 
 type MCReqAndTime struct {
 	request gomemcached.MCRequest
 	reqTime time.Time
 	srcIP   net.IP
-    srcPort layers.TCPPort
+	srcPort layers.TCPPort
 	dstIP   net.IP
-    dstPort layers.TCPPort
+	dstPort layers.TCPPort
 }
 
 type MCRespAndTime struct {
 	response gomemcached.MCResponse
 	respTime time.Time
 	srcIP    net.IP
-    srcPort layers.TCPPort
+	srcPort  layers.TCPPort
 	dstIP    net.IP
-    dstPort layers.TCPPort
+	dstPort  layers.TCPPort
 }
 
 func (req MCReqAndTime) Key() string {
-	return req.srcIP.String()+ req.srcPort.String() + req.dstIP.String() + req.dstPort.String() + strconv.Itoa(int(req.request.Opaque))
+	return req.srcIP.String() + req.srcPort.String() + req.dstIP.String() + req.dstPort.String() + strconv.Itoa(int(req.request.Opaque))
 }
 
 func (req MCReqAndTime) modeServer(mode string) string {
-    if mode == "client" {
-        return req.dstIP.String()
-    } else {
-        return req.srcIP.String()
-    }
+	if mode == "client" {
+		return req.dstIP.String()
+	} else {
+		return req.srcIP.String()
+	}
 }
 
 func (resp MCRespAndTime) Key() string {
-	return resp.dstIP.String() + resp.dstPort.String() + resp.srcIP.String()+ resp.srcPort.String() +  strconv.Itoa(int(resp.response.Opaque))
+	return resp.dstIP.String() + resp.dstPort.String() + resp.srcIP.String() + resp.srcPort.String() + strconv.Itoa(int(resp.response.Opaque))
 }
 
 type reqAndTime struct {
@@ -61,12 +61,12 @@ type counterAndHisto struct {
 }
 
 func initMetrics() counterAndHisto {
-    c1 := metrics.NewCounter()
-    c2 := metrics.NewCounter()
-    s := metrics.NewExpDecaySample(1024, 0.015)
-    /* s := metrics.NewUniformSample(1028) */
-    h := metrics.NewHistogram(s)
-    return counterAndHisto{c1,c2,h}
+	c1 := metrics.NewCounter()
+	c2 := metrics.NewCounter()
+	s := metrics.NewExpDecaySample(1024, 0.015)
+	/* s := metrics.NewUniformSample(1028) */
+	h := metrics.NewHistogram(s)
+	return counterAndHisto{c1, c2, h}
 }
 
 func analyse() {
@@ -85,16 +85,16 @@ func analyse() {
 				spentTime := resp.respTime.Sub(req.reqTime)
 				if _, ok := serverMetrics[req.modeServer(options.mode)]; !ok {
 					serverMetrics[req.modeServer(options.mode)] = initMetrics()
-                }
-                ch := serverMetrics[req.modeServer(options.mode)]
-                ch.all.Inc(1)
-                ch.histo.Update(spentTime.Nanoseconds() / 1000)
+				}
+				ch := serverMetrics[req.modeServer(options.mode)]
+				ch.all.Inc(1)
+				ch.histo.Update(spentTime.Nanoseconds() / 1000)
 				if spentTime > time.Duration(time.Duration(options.timeout)*time.Millisecond) {
 					ch.timeout.Inc(1)
-                    if options.printAll {
-                        Printf("%s, %s, %21s => %21s ,resp received at %s, spent %s\n", req.request.Opcode, string(req.request.Key), req.srcIP.String() + ":" +req.srcPort.String(), req.dstIP.String() + ":" + req.dstPort.String(), resp.respTime, spentTime)
-                    }
-                }
+					if options.printAll {
+						Printf("%s, %s, %21s => %21s ,resp received at %s, spent %s\n", req.request.Opcode, string(req.request.Key), req.srcIP.String()+":"+req.srcPort.String(), req.dstIP.String()+":"+req.dstPort.String(), resp.respTime, spentTime)
+					}
+				}
 				delete(rawData, req.Key())
 				/* Push(data, reqAndTime{req, spentTime}) */
 			}
