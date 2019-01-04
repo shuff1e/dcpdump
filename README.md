@@ -1,5 +1,8 @@
 官方客户端已经有tracing功能。
+
 参考：[Response Time Observability with the Java SDK](https://blog.couchbase.com/response-time-observability-with-the-java-sdk/)
+
+代码：[ConnectionBase.java](https://github.com/shuff1e/devguide-examples/blob/master/java/src/main/java/com/couchbase/devguide/ConnectionBase.java)
 
 # dcpdump
 # couchbase 抓包工具
