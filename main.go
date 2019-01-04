@@ -102,7 +102,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
+        // analyse the couchbase dcp packet
 	go analyse()
 	/* go httpPrint() */
 
