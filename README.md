@@ -1,3 +1,6 @@
+官方客户端已经有tracing功能。
+参考：[Response Time Observability with the Java SDK](https://blog.couchbase.com/response-time-observability-with-the-java-sdk/)
+
 # dcpdump
 # couchbase 抓包工具
 
