@@ -33,6 +33,7 @@ func (req MCReqAndTime) Key() string {
 }
 
 func (req MCReqAndTime) modeServer(mode string) string {
+	// group by res.dstIP or res.srcIP depends on which end you are listening
 	if mode == "client" {
 		return req.dstIP.String()
 	} else {
