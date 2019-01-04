@@ -45,6 +45,7 @@ func (resp MCRespAndTime) Key() string {
 	return resp.dstIP.String() + resp.dstPort.String() + resp.srcIP.String() + resp.srcPort.String() + strconv.Itoa(int(resp.response.Opaque))
 }
 
+// req and the time spent between received from and sent to the network
 type reqAndTime struct {
 	MCReqAndTime
 	spentTime time.Duration
@@ -55,6 +56,7 @@ var (
 	initialTime time.Time
 )
 
+// metrics
 type counterAndHisto struct {
 	all     metrics.Counter
 	timeout metrics.Counter
