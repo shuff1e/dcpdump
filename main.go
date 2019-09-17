@@ -18,7 +18,6 @@ var options struct {
 	remoteIP	  string
 	snapshotLen   int
 	printInterval int
-	topN          int
 	printAll      bool
 	timeout       int
 	mode          string
@@ -31,13 +30,11 @@ func argParse() {
 		"the ip which is interacting with this machine")
 	flag.IntVar(&options.snapshotLen, "snapshotLen", 1024,
 		"package will be cut if more than snapshotLen")
-	flag.IntVar(&options.printInterval, "printInterval", 120,
+	flag.IntVar(&options.printInterval, "printInterval", 60,
 		"the interval to pop the metrics")
-	flag.IntVar(&options.topN, "topN", 10,
-		"top n most time spent operation info to show")
 	flag.BoolVar(&options.printAll, "printAll", true,
 		"whether to print all the info")
-	flag.IntVar(&options.timeout, "timeout", 10,
+	flag.IntVar(&options.timeout, "timeout", 0,
 		"timeout setting, in milliseconds")
 	flag.StringVar(&options.mode, "mode", "client",
 		"run at server or client")
