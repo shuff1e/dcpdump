@@ -112,7 +112,16 @@ func dispatch(packet gopacket.Packet) {
 				switch payload[0] {
 				case 128:
 					rv := gomemcached.MCRequest{}
-					_, err := rv.Receive(r, nil)
+					_, err := func() (n int,err error) {
+						defer func() {
+							if tmperr := recover(); tmperr != nil {
+								n = -1
+								err = fmt.Errorf(fmt.Sprintf("%#v",tmperr))
+							}
+						}()
+						n,err = rv.Receive(r, nil)
+						return
+					}()
 					if err != nil {
 						//fmt.Println("Error decoding some part of the packet:", err)
 					} else {
@@ -120,7 +129,16 @@ func dispatch(packet gopacket.Packet) {
 					}
 				case 129:
 					rv := gomemcached.MCResponse{}
-					_, err := rv.Receive(r, nil)
+					_, err := func() (n int ,err error) {
+						defer func() {
+							if tmperr := recover(); tmperr != nil {
+								n = -1
+								err = fmt.Errorf(fmt.Sprintf("%#v",tmperr))
+							}
+						}()
+						n,err = rv.Receive(r, nil)
+						return
+					}()
 					if err != nil {
 						//fmt.Println("Error decoding some part of the packet:", err)
 					} else {
