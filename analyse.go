@@ -6,7 +6,6 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/rcrowley/go-metrics"
 	"net"
-	/* "sort" */
 	"strconv"
 	"time"
 )
@@ -57,7 +56,6 @@ func initMetrics() counterAndHisto {
 	c1 := metrics.NewCounter()
 	c2 := metrics.NewCounter()
 	s := metrics.NewExpDecaySample(1024, 0.015)
-	/* s := metrics.NewUniformSample(1028) */
 	h := metrics.NewHistogram(s)
 	return counterAndHisto{c1, c2, h}
 }
@@ -85,7 +83,8 @@ func analyse() {
 				if spentTime > time.Duration(time.Duration(options.timeout)*time.Millisecond) {
 					ch.timeout.Inc(1)
 					if options.printAll {
-						fmt.Printf("%s, %s, %21s => %21s ,resp %s received at %s, spent %s\n", req.request.Opcode, string(req.request.Key), req.srcIP.String()+":"+req.srcPort.String(), req.dstIP.String()+":"+req.dstPort.String(), resp.response.Status, resp.respTime, spentTime)
+						fmt.Printf("%s, %s, %21s => %21s ,resp %s received at %s, spent %s\n",
+							req.request.Opcode, string(req.request.Key), req.srcIP.String()+":"+req.srcPort.String(), req.dstIP.String()+":"+req.dstPort.String(), resp.response.Status, resp.respTime, spentTime)
 					}
 				}
 				delete(rawData, req.Key())
@@ -105,7 +104,6 @@ func analyse() {
 				fmt.Printf("%%95 <= %.4f ms\n", ps[2]/1000)
 				fmt.Printf("%%99 <= %v ms\n", ps[3]/1000)
 				fmt.Println()
-				/* h.Clear() */
 			}
 			fmt.Printf("--------------------------------------\n\n")
 		case <-rawTicker.C:

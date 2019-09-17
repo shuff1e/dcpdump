@@ -15,15 +15,17 @@ Build
 
 Capture all dcp packet
 
-  **./dcpdump -network=bond0.107 -snapshotLen=1024 -printAll=true -printInterval=100 -timeout=0 -mode=client**
+  **./dcpdump -localIP=10.153.194.168 -snapshotLen=1024 -printAll=true -printInterval=100 -timeout=0 -mode=client**
   
 Cpature dcp packet from or to one specific host
 
-  **./dcpdump -network=bond0.107 -snapshotLen=1024 -printAll=true -printInterval=100 -timeout=0 -mode=server --server=127.0.0.1**
+  **./dcpdump -localIp=10.153.194.168 -snapshotLen=1024 -printAll=true -printInterval=100 -timeout=0 -mode=server -remoteIP=10.153.194.188**
 
 Options
 
-  **network为客户端使用的网卡，snapshotLen指从抓取的MAC帧中截取的长度(具体信息可以man tcpdump)**
+  **localIP为运行dcpdump的机器的IP**
+  
+  **snapshotLen指从抓取的MAC帧中截取的长度(具体信息可以man tcpdump)**
 
   **printAll为是否输出超时响应的具体信息**
 
@@ -32,3 +34,5 @@ Options
   **timeout为超时时间**
 
   **mode为运行模式，在客户端机器上运行时，mode为client，服务端节点上运行时，mode为server**
+
+  **remoteIP为与本机交互的其他机器的IP**

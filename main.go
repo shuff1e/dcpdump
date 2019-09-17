@@ -55,7 +55,6 @@ var (
 	timeout     time.Duration = 30 * time.Second
 	reqChan     = make(chan MCReqAndTime)
 	respChan    = make(chan MCRespAndTime)
-	httpChan    = make(chan string, 10)
 )
 
 func init() {
@@ -63,11 +62,12 @@ func init() {
 }
 
 func main() {
-	// Open device
+	// Find device
 	network,err := FindInterface(options.localIP)
 	if err != nil {
 		panic(err)
 	}
+	// Open device
 	handle, err := pcap.OpenLive(network, int32(options.snapshotLen), promiscuous, timeout)
 	if err != nil {
 		log.Fatal(err)
@@ -85,9 +85,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-        // analyse the couchbase dcp packet
+	// analyse the couchbase dcp packet
 	go analyse()
-	/* go httpPrint() */
 
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 	for packet := range packetSource.Packets() {
