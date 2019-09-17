@@ -9,14 +9,13 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 	"log"
-	"net/http"
 	"os"
 	"time"
 )
 
 var options struct {
-	serverIP      string
-	network       string
+	localIP       string
+	remoteIP	  string
 	snapshotLen   int
 	printInterval int
 	topN          int
@@ -26,10 +25,10 @@ var options struct {
 }
 
 func argParse() {
-	flag.StringVar(&options.serverIP, "server", "",
-		"couchbase server to check")
-	flag.StringVar(&options.network, "network", "eth0",
-		"network used")
+	flag.StringVar(&options.localIP, "localIP", "",
+		"the ip of the machine which dcpdump is running")
+	flag.StringVar(&options.remoteIP, "remoteIP", "",
+		"the ip which is interacting with this machine")
 	flag.IntVar(&options.snapshotLen, "snapshotLen", 1024,
 		"package will be cut if more than snapshotLen")
 	flag.IntVar(&options.printInterval, "printInterval", 120,
@@ -53,39 +52,23 @@ func usage() {
 
 var (
 	promiscuous bool = false
-	err         error
 	timeout     time.Duration = 30 * time.Second
-	handle      *pcap.Handle
 	reqChan     = make(chan MCReqAndTime)
 	respChan    = make(chan MCRespAndTime)
 	httpChan    = make(chan string, 10)
-	writer      http.ResponseWriter
 )
 
 func init() {
 	argParse()
-	/* data = make(opeHeap, options.topN) */
-}
-
-func Println(a ...interface{}) {
-	fmt.Println(a...)
-	/* select { */
-	/* case httpChan <- fmt.Sprintln(a...): */
-	/* default: */
-	/* } */
-}
-
-func Printf(format string, a ...interface{}) {
-	fmt.Printf(format, a...)
-	/* select { */
-	/* case httpChan <- fmt.Sprintf(format, a...): */
-	/* default: */
-	/* } */
 }
 
 func main() {
 	// Open device
-	handle, err = pcap.OpenLive(options.network, int32(options.snapshotLen), promiscuous, timeout)
+	network,err := FindInterface(options.localIP)
+	if err != nil {
+		panic(err)
+	}
+	handle, err := pcap.OpenLive(network, int32(options.snapshotLen), promiscuous, timeout)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -93,8 +76,8 @@ func main() {
 
 	// Set filter
 	var filter string
-	if options.serverIP != "" {
-		filter = fmt.Sprintf("port 11210 and host %s", options.serverIP)
+	if options.remoteIP != "" {
+		filter = fmt.Sprintf("port 11210 and host %s", options.remoteIP)
 	} else {
 		filter = fmt.Sprintf("port 11210")
 	}
@@ -114,29 +97,14 @@ func main() {
 
 func dispatch(packet gopacket.Packet) {
 
-	// Let's see if the packet is IP (even though the ether type told us)
 	ipLayer := packet.Layer(layers.LayerTypeIPv4)
 	if ipLayer != nil {
 		ip, _ := ipLayer.(*layers.IPv4)
 
-		// IP layer variables:
-		// Version (Either 4 or 6)
-		// IHL (IP Header Length in 32-bit words)
-		// TOS, Length, Id, Flags, FragOffset, TTL, Protocol (TCP?),
-		// Checksum, SrcIP, DstIP
-
-		// Let's see if the packet is TCP
 		tcpLayer := packet.Layer(layers.LayerTypeTCP)
 		if tcpLayer != nil {
 			tcp, _ := tcpLayer.(*layers.TCP)
 
-			// TCP layer variables:
-			// SrcPort, DstPort, Seq, Ack, DataOffset, Window, Checksum, Urgent
-			// Bool flags: FIN, SYN, RST, PSH, ACK, URG, ECE, CWR, NS
-
-			// When iterating through packet.Layers() above,
-			// if it lists Payload layer then that is the same as
-			// this applicationLayer. applicationLayer contains the payload
 			applicationLayer := packet.ApplicationLayer()
 			if applicationLayer != nil {
 				payload := applicationLayer.Payload()
@@ -146,7 +114,7 @@ func dispatch(packet gopacket.Packet) {
 					rv := gomemcached.MCRequest{}
 					_, err := rv.Receive(r, nil)
 					if err != nil {
-						Println("Error decoding some part of the packet:", err)
+						//fmt.Println("Error decoding some part of the packet:", err)
 					} else {
 						reqChan <- MCReqAndTime{rv, packet.Metadata().CaptureInfo.Timestamp, ip.SrcIP, tcp.SrcPort, ip.DstIP, tcp.DstPort}
 					}
@@ -154,7 +122,7 @@ func dispatch(packet gopacket.Packet) {
 					rv := gomemcached.MCResponse{}
 					_, err := rv.Receive(r, nil)
 					if err != nil {
-						Println("Error decoding some part of the packet:", err)
+						//fmt.Println("Error decoding some part of the packet:", err)
 					} else {
 						respChan <- MCRespAndTime{rv, packet.Metadata().CaptureInfo.Timestamp, ip.SrcIP, tcp.SrcPort, ip.DstIP, tcp.DstPort}
 					}
