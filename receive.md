@@ -1,6 +1,6 @@
 + 由于抓包时，只截取了1024字节，因此解析时，只解析到key(1024字节一般足够了)，可能无法解析整个数据包，所以需要修改一下gomemcached的代码
 
-+ modify mc_req.go  
++ modify *mc_req.go*  
 
 ```
 // Receive will fill this MCRequest with the data from a reader.
