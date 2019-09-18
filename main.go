@@ -10,6 +10,7 @@ import (
 	"github.com/google/gopacket/pcap"
 	"log"
 	"os"
+	"runtime/debug"
 	"time"
 )
 
@@ -47,16 +48,16 @@ func usage() {
 	flag.PrintDefaults()
 }
 
+func init() {
+	argParse()
+}
+
 var (
 	promiscuous bool = false
 	timeout     time.Duration = 30 * time.Second
 	reqChan     = make(chan MCReqAndTime)
 	respChan    = make(chan MCRespAndTime)
 )
-
-func init() {
-	argParse()
-}
 
 func main() {
 	// Find device
@@ -92,59 +93,51 @@ func main() {
 }
 
 func dispatch(packet gopacket.Packet) {
-
-	ipLayer := packet.Layer(layers.LayerTypeIPv4)
-	if ipLayer != nil {
-		ip, _ := ipLayer.(*layers.IPv4)
-
-		tcpLayer := packet.Layer(layers.LayerTypeTCP)
-		if tcpLayer != nil {
-			tcp, _ := tcpLayer.(*layers.TCP)
-
-			applicationLayer := packet.ApplicationLayer()
-			if applicationLayer != nil {
-				payload := applicationLayer.Payload()
-				r := bytes.NewReader(payload)
-				switch payload[0] {
-				case 128:
-					rv := gomemcached.MCRequest{}
-					_, err := func() (n int,err error) {
-						defer func() {
-							if tmperr := recover(); tmperr != nil {
-								n = -1
-								err = fmt.Errorf(fmt.Sprintf("%#v",tmperr))
-							}
-						}()
-						n,err = rv.Receive(r, nil)
-						return
-					}()
-					if err != nil {
-						//fmt.Println("Error decoding some part of the packet:", err)
-					} else {
-						reqChan <- MCReqAndTime{rv, packet.Metadata().CaptureInfo.Timestamp, ip.SrcIP, tcp.SrcPort, ip.DstIP, tcp.DstPort}
-					}
-				case 129:
-					rv := gomemcached.MCResponse{}
-					_, err := func() (n int ,err error) {
-						defer func() {
-							if tmperr := recover(); tmperr != nil {
-								n = -1
-								err = fmt.Errorf(fmt.Sprintf("%#v",tmperr))
-							}
-						}()
-						n,err = rv.Receive(r, nil)
-						return
-					}()
-					if err != nil {
-						//fmt.Println("Error decoding some part of the packet:", err)
-					} else {
-						respChan <- MCRespAndTime{rv, packet.Metadata().CaptureInfo.Timestamp, ip.SrcIP, tcp.SrcPort, ip.DstIP, tcp.DstPort}
-					}
-				default:
-					/* fmt.Printf("%s\n", payload) */
-				}
-			}
+	defer func() {
+		if err := recover(); err != nil {
+			debug.PrintStack()
 		}
+	}()
+	// ip
+	ipLayer := packet.Layer(layers.LayerTypeIPv4)
+	if ipLayer == nil {
+		return
 	}
+	ip, _ := ipLayer.(*layers.IPv4)
 
+	// tcp
+	tcpLayer := packet.Layer(layers.LayerTypeTCP)
+	if tcpLayer == nil {
+		return
+	}
+	tcp, _ := tcpLayer.(*layers.TCP)
+
+	// application
+	applicationLayer := packet.ApplicationLayer()
+	if applicationLayer == nil {
+		return
+	}
+	payload := applicationLayer.Payload()
+
+	r := bytes.NewReader(payload)
+	switch payload[0] {
+	case 128:
+		rv := gomemcached.MCRequest{}
+		_, err := rv.Receive(r, nil)
+		if err == nil {
+			reqChan <- MCReqAndTime{rv, packet.Metadata().CaptureInfo.Timestamp, ip.SrcIP, tcp.SrcPort, ip.DstIP, tcp.DstPort}
+		} else {
+			//fmt.Println("Error decoding some part of the packet:", err)
+		}
+	case 129:
+		rv := gomemcached.MCResponse{}
+		_, err := rv.Receive(r, nil)
+		if err == nil {
+			respChan <- MCRespAndTime{rv, packet.Metadata().CaptureInfo.Timestamp, ip.SrcIP, tcp.SrcPort, ip.DstIP, tcp.DstPort}
+		} else {
+			//fmt.Println("Error decoding some part of the packet:", err)
+		}
+	default:
+		/* fmt.Printf("%s\n", payload) */
+	}
 }
