@@ -33,11 +33,13 @@ func FindInterface(ip string) (string,error) {
 	if err != nil {
 		return "",err
 	}
-	// if no ip given, return the only device
-	if len(ips) == 2 && ip == "" {
-		for inter,_ := range ips {
-			if inter != "lo" {
-				return inter,nil
+	// if no ip given, return the first device with internal ip
+	if ip == "" {
+		for inter,addrs := range ips {
+			for _,addr := range addrs {
+				if strings.HasPrefix(addr,"10.") {
+					return inter,nil
+				}
 			}
 		}
 	}
